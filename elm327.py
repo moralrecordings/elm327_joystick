@@ -27,7 +27,7 @@ class ELM327:
             if b == b'>':
                 break
             output.append( b[0] )
-        print(output)
+        #print( output )
         return output
 
 

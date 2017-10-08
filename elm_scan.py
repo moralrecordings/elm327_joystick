@@ -46,5 +46,4 @@ if __name__ == '__main__':
     except EOFError:
         print('-- Hit the end')
     except KeyboardInterrupt:
-        pass
-    elm.get_prompt()
+        elm.get_prompt()
