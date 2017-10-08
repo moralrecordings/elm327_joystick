@@ -1,4 +1,5 @@
 import sys
+import math
 
 import uinput
 from elm327 import ELM327
@@ -6,11 +7,23 @@ from mrcrowbar import models as mrc
 
 
 class Steering( mrc.Block ):
-    axis = mrc.UInt16_BE( 0x00 )
+    RANGE = 0x00D2
+
+    axis_raw = mrc.UInt16_BE( 0x00 )
+
+    @property
+    def axis( self ):
+        return max( min( (255*(self.axis_raw - 0x8000)//self.RANGE), -255 ), 255 )
 
 
 class Accelerator( mrc.Block ):
-    axis = mrc.UInt8( 0x06 )
+    RANGE = 0xC8
+
+    axis_raw = mrc.UInt8( 0x06 )
+
+    @property
+    def axis( self ):
+        return max( min( (255*(self.axis_raw)//self.RANGE), 0 ), 255 )
 
 
 class Brake( mrc.Block ):
@@ -30,61 +43,68 @@ class Mazda3:
     def __init__( self ):
         # create a new virtual joystick device with the features we need 
         self.device = uinput.Device([
-            uinput.ABS_WHEEL,
-            uinput.ABS_GAS,
+            uinput.ABS_WHEEL + (-255, 255, 0, 0),
+            uinput.ABS_GAS + (0, 255, 0, 0),
             uinput.BTN_0,
             uinput.BTN_1,
-            uinput.BTN_2
+            uinput.BTN_2,
             uinput.BTN_3
         ], name='Mazda 3')
+        self.steering = 0
+        self.accelerator = 0
+        self.brake = 0
+        self.high_beams = 0
+        self.cruise = 0
+        self.driver_door = 0
 
 
-    def read_can( self, msg_id, msg_b ):
-        if msg_id == 0x4da: 
-            pass    
+    def update( self, msg_id, msg_b ):
+        cruise_old = self.cruise
+        driver_door_old = self.driver_door
+
+        if msg_id == 0x4da:
+            self.steering = Steering( msg_b ).axis
         elif msg_id == 0x201:
-            pass
-        elif msg_id == 0x190:
-            pass
+            self.steering = Accelerator( msg_b ).axis
+        elif msg_id == 0x205:
+            self.brake = Brake( msg_b ).button
         elif msg_id == 0x4ec:
-            pass
+            self.cruise = Cruise( msg_b ).button:
         elif msg_id == 0x433:
-            pass
+            self.high_beams = Controls( msg_b ).high_beams
+            self.driver_door = Controls( msg_b ).driver_door
+
+        self.device.emit( uinput.ABS_WHEEL, self.steering )
+        self.device.emit( uinput.ABS_GAS, self.accelerator )
+        self.device.emit( uinput.BTN_0, self.brake )
+        self.device.emit( uinput.BTN_1, self.high_beams )
+        self.device.emit( uinput.BTN_2, 1 if self.cruise != cruise_old else 0 )
+        self.device.emit( uinput.BTN_3, 1 if self.driver_door != driver_door_old else 0 )
+        return
         
 
 if __name__ == '__main__':
     args = {}
-    if len( sys.argv ) < 2:
-        print('Usage: {} filter [device] [baud_rate] [protocol]')
-        sys.exit(1)
-    filter = int( sys.argv[1] ) 
-    assert 0 <= filter <= 7
 
+    if len( sys.argv ) >= 2:
+        args['device'] = sys.argv[1]
     if len( sys.argv ) >= 3:
-        args['device'] = sys.argv[2]
+        args['baud_rate'] = sys.argv[2]
     if len( sys.argv ) >= 4:
-        args['baud_rate'] = sys.argv[3]
-    if len( sys.argv ) >= 5:
-        args['protocol'] = sys.argv[4]
+        args['protocol'] = sys.argv[3]
+
+    joystick = Mazda3()
 
     elm = ELM327( **args )
     elm.reset()
-
-    last_msg = {}
-
+    elm.set_can_whitelist( [0x4da, 0x201, 0x205, 0x4ec, 0x433] )
+    elm.start_can()
     
     try:
         while True:
-            msg_id, msg_b = elm.
-            msg_m = msg_re.match(msg_raw)
-            if msg_m:
-                msg_id = int(msg_m.group(1), 16)
-                msg_b = bytes(map(lambda x: int(x, 16), msg_m.group(2).strip().split(b' ')))
-                if msg_id not in last_msg:
-                    last_msg[msg_id] = msg_b
-                elif last_msg[msg_id][:-1] != msg_b[:-1]:
-                    print('{0:#03x}: {1} -> {2}'.format(msg_id, last_msg[msg_id], msg_b))
-                    last_msg[msg_id] = msg_b
+            msg_id, msg_b = elm.recv_can()
+            if msg_b:
+                joystick.update( msg_id, msg_b )
             else:
                 print('-- Miss: {}'.format(msg_raw))
     except EOFError:
