@@ -41,9 +41,10 @@ if __name__ == '__main__':
                 if msg_id not in last_msg:
                     last_msg[msg_id] = msg_b
                 elif last_msg[msg_id] != msg_b:
-                    print( '{0:#03x}: {1} -> {2}'.format(msg_id, last_msg[msg_id], msg_b) )
+                    print( '{0:03x}: {1} -> {2}'.format(msg_id, last_msg[msg_id], msg_b.hex()) )
                     last_msg[msg_id] = msg_b
     except EOFError:
         print('-- Hit the end')
     except KeyboardInterrupt:
-        elm.get_prompt()
+        pass
+    elm.get_prompt()

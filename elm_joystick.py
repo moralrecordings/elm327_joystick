@@ -37,8 +37,8 @@ class Cruise( mrc.Block ):
 
 
 class Controls( mrc.Block ):
-    driver_door =   mrc.Bits( 0x00, 0b10000000 )
-    high_beams =    mrc.Bits( 0x03, 0b01000000 )
+    driver_door = mrc.Bits( 0x00, 0b10000000 )
+    high_beams = mrc.Bits( 0x03, 0b01000000 )
 
 
 class Mazda3:
@@ -73,17 +73,19 @@ class Mazda3:
         elif msg_id == 0x4ec:
             self.cruise = Cruise( msg_b ).button
         elif msg_id == 0x433:
-            self.high_beams = Controls( msg_b ).high_beams
-            self.driver_door = Controls( msg_b ).driver_door
+            obj = Controls( msg_b )
+            self.high_beams = obj.high_beams
+            self.driver_door = obj.driver_door
         else:
             return
-    
+
         self.device.emit( uinput.ABS_WHEEL, self.steering )
         self.device.emit( uinput.ABS_GAS, self.accelerator )
         self.device.emit( uinput.BTN_0, self.brake )
         self.device.emit( uinput.BTN_1, self.high_beams )
         self.device.emit( uinput.BTN_2, 1 if self.cruise != cruise_old else 0 )
         self.device.emit( uinput.BTN_3, 1 if self.driver_door != driver_door_old else 0 )
+        return
         
 
 if __name__ == '__main__':
@@ -106,11 +108,12 @@ if __name__ == '__main__':
     try:
         while True:
             msg_id, msg_b = elm.recv_can()
-            #print((msg_id, msg_b))
             if msg_b:
                 joystick.update( msg_id, msg_b )
+            else:
+                print('-- Miss: {}'.format(msg_raw))
     except EOFError:
         print('-- Hit the end')
     except KeyboardInterrupt:
-        elm.get_prompt()
         pass
+    elm.get_prompt()

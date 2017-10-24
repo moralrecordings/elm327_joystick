@@ -4,7 +4,7 @@ import sys
 import time
 import re
 
-CAN_RE = re.compile(b'([0-9A-F]{3})\\W*([0-9A-F\\W]+)')
+CAN_RE = re.compile( b'([0-9A-F]{3})\\W*([0-9A-F\\W]+)' )
 
 class ELM327:
     
@@ -49,9 +49,7 @@ class ELM327:
         #print( msg_raw )
         if msg_m:
             msg_id = int( msg_m.group( 1 ), 16 )
-            msg_bytes = msg_m.group( 2 ).strip()
-            msg_bl = (msg_bytes[i:i+2] for i in range( 0, len( msg_bytes ), 2 ))
-            msg_b = bytes( map( lambda x: int( x, 16 ), msg_bl ) )
+            msg_b = bytes.fromhex( msg_m.group( 2 ).decode( 'ascii' ) )
             return (msg_id, msg_b)
         return (-1, b'')
 
