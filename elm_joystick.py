@@ -42,16 +42,9 @@ class Controls( mrc.Block ):
 
 
 class Mazda3:
-    def __init__( self ):
+    def __init__( self, name, mapping ):
         # create a new virtual joystick device with the features we need 
-        self.device = uinput.Device([
-            uinput.ABS_WHEEL + (-255, 255, 0, 0),
-            uinput.ABS_GAS + (0, 255, 0, 0),
-            uinput.BTN_0,
-            uinput.BTN_1,
-            uinput.BTN_2,
-            uinput.BTN_3
-        ], name='Mazda 3')
+        self.device = uinput.Device( mapping, name )
         self.steering = 0
         self.accelerator = 0
         self.brake = 0
@@ -78,7 +71,30 @@ class Mazda3:
             self.driver_door = obj.driver_door
         else:
             return
+        self.set_controls()
+        return
+        
+    
+    def set_controls( self ):
+        pass
 
+
+class Mazda3Joystick( Mazda3 ):
+    
+    NAME = 'Mazda 3 Joystick'
+    DEVICE = [
+        uinput.ABS_WHEEL + (-255, 255, 0, 0),
+        uinput.ABS_GAS + (0, 255, 0, 0),
+        uinput.BTN_0,
+        uinput.BTN_1,
+        uinput.BTN_2,
+        uinput.BTN_3
+    ]
+
+    def __init__( self ):
+        super( Mazda3Joystick, self ).__init__( name=self.NAME, mapping=self.DEVICE )
+
+    def set_controls( self ): 
         self.device.emit( uinput.ABS_WHEEL, self.steering )
         self.device.emit( uinput.ABS_GAS, self.accelerator )
         self.device.emit( uinput.BTN_0, self.brake )
@@ -88,17 +104,54 @@ class Mazda3:
         return
         
 
+class Mazda3Keyboard( Mazda3 ):
+    
+    NAME = 'Mazda 3 Keyboard'
+    DEVICE = [
+        uinput.KEY_LEFT,
+        uinput.KEY_UP,
+        uinput.KEY_RIGHT,
+        uinput.KEY_DOWN,
+        uinput.KEY_LEFTSHIFT,
+        uinput.KEY_SPACE,
+        uinput.KEY_LEFTCTRL,
+        uinput.KEY_ENTER
+    ]
+    PRESS_THRESHOLD = 32
+    SHOVE_THRESHOLD = 96
+    
+
+    def __init__( self ):
+        super( Mazda3Keyboard, self ).__init__( name=self.NAME, mapping=self.DEVICE )
+
+    def set_controls( self ): 
+        self.device.emit( uinput.KEY_LEFT, 1 if self.steering < -self.PRESS_THRESHOLD else 0 )
+        self.device.emit( uinput.KEY_RIGHT, 1 if self.steering > self.PRESS_THRESHOLD else 0 )
+        self.device.emit( uinput.KEY_UP, 1 if self.accelerator > self.PRESS_THRESHOLD else 0 )
+        self.device.emit( uinput.KEY_LEFTSHIFT, 1 if self.accelerator > self.SHOVE_THRESHOLD else 0 )
+        self.device.emit( uinput.KEY_DOWN, self.brake )
+        self.device.emit( uinput.KEY_LEFTCTRL, self.high_beams )
+        self.device.emit( uinput.KEY_SPACE, 1 if self.cruise != cruise_old else 0 )
+        self.device.emit( uinput.KEY_ENTER, 1 if self.driver_door != driver_door_old else 0 )
+        return
+
+
+
 if __name__ == '__main__':
     args = {}
-
-    if len( sys.argv ) >= 2:
-        args['device'] = sys.argv[1]
+    controller = None
+    if len( sys.argv ) >= 2 and sys.argv[1] == 'keyboard':
+        controller = Mazda3Keyboard()
+    else:
+        controller = Mazda3Joystick()
     if len( sys.argv ) >= 3:
-        args['baud_rate'] = sys.argv[2]
+        args['device'] = sys.argv[2]
     if len( sys.argv ) >= 4:
-        args['protocol'] = sys.argv[3]
+        args['baud_rate'] = sys.argv[3]
+    if len( sys.argv ) >= 5:
+        args['protocol'] = sys.argv[4]
 
-    joystick = Mazda3()
+    controller = Mazda3Joystick()
 
     elm = ELM327( **args )
     elm.reset()
@@ -109,7 +162,7 @@ if __name__ == '__main__':
         while True:
             msg_id, msg_b = elm.recv_can()
             if msg_b:
-                joystick.update( msg_id, msg_b )
+                controller.update( msg_id, msg_b )
             else:
                 print('-- Miss: {}'.format(msg_raw))
     except EOFError:
