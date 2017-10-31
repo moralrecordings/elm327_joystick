@@ -2,6 +2,7 @@
 
 import sys
 import math
+import time
 
 import uinput
 from elm327 import ELM327
@@ -42,6 +43,8 @@ class Controls( mrc.Block ):
 
 
 class Mazda3:
+    LATCH_TIME = 0.1
+
     def __init__( self, name, mapping ):
         # create a new virtual joystick device with the features we need 
         self.device = uinput.Device( mapping, name )
@@ -49,13 +52,16 @@ class Mazda3:
         self.accelerator = 0
         self.brake = 0
         self.high_beams = 0
+        self.cruise_t = self.driver_door_t = time.time() + self.LATCH_TIME
         self.cruise = 0
         self.driver_door = 0
-
+        self.cruise_prev = 0
+        self.driver_door_prev = 0
 
     def update( self, msg_id, msg_b ):
-        cruise_old = self.cruise
-        driver_door_old = self.driver_door
+        t = time.time()
+        self.cruise_prev = self.cruise
+        self.driver_door_prev = self.driver_door
 
         if msg_id == 0x4da:
             self.steering = Steering( msg_b ).axis
@@ -71,6 +77,12 @@ class Mazda3:
             self.driver_door = obj.driver_door
         else:
             return
+        
+        if self.cruise != self.cruise_prev:
+            self.cruise_t = t
+        if self.driver_door != self.driver_door_prev:
+            self.driver_door_t = t
+
         self.set_controls()
         return
         
@@ -95,12 +107,13 @@ class Mazda3Joystick( Mazda3 ):
         super( Mazda3Joystick, self ).__init__( name=self.NAME, mapping=self.DEVICE )
 
     def set_controls( self ): 
+        t = time.time()
         self.device.emit( uinput.ABS_WHEEL, self.steering )
         self.device.emit( uinput.ABS_GAS, self.accelerator )
         self.device.emit( uinput.BTN_0, self.brake )
         self.device.emit( uinput.BTN_1, self.high_beams )
-        self.device.emit( uinput.BTN_2, 1 if self.cruise != cruise_old else 0 )
-        self.device.emit( uinput.BTN_3, 1 if self.driver_door != driver_door_old else 0 )
+        self.device.emit( uinput.BTN_2, 1 if t < (self.cruise_t + self.LATCH_TIME) else 0 )
+        self.device.emit( uinput.BTN_3, 1 if t < (self.driver_door_t + self.LATCH_TIME) else 0 )
         return
         
 
@@ -111,28 +124,30 @@ class Mazda3Keyboard( Mazda3 ):
         uinput.KEY_LEFT,
         uinput.KEY_UP,
         uinput.KEY_RIGHT,
-        uinput.KEY_DOWN,
+        uinput.KEY_U,
         uinput.KEY_LEFTSHIFT,
-        uinput.KEY_SPACE,
-        uinput.KEY_LEFTCTRL,
-        uinput.KEY_ENTER
+        uinput.KEY_E,
+        uinput.KEY_P,
+        uinput.KEY_I
     ]
     PRESS_THRESHOLD = 32
-    SHOVE_THRESHOLD = 96
+    STEER_THRESHOLD = 64
+    SHOVE_THRESHOLD = 128
     
 
     def __init__( self ):
         super( Mazda3Keyboard, self ).__init__( name=self.NAME, mapping=self.DEVICE )
 
     def set_controls( self ): 
-        self.device.emit( uinput.KEY_LEFT, 1 if self.steering < -self.PRESS_THRESHOLD else 0 )
-        self.device.emit( uinput.KEY_RIGHT, 1 if self.steering > self.PRESS_THRESHOLD else 0 )
+        t = time.time()
+        self.device.emit( uinput.KEY_LEFT, 1 if self.steering < -self.STEER_THRESHOLD else 0 )
+        self.device.emit( uinput.KEY_RIGHT, 1 if self.steering > self.STEER_THRESHOLD else 0 )
         self.device.emit( uinput.KEY_UP, 1 if self.accelerator > self.PRESS_THRESHOLD else 0 )
         self.device.emit( uinput.KEY_LEFTSHIFT, 1 if self.accelerator > self.SHOVE_THRESHOLD else 0 )
-        self.device.emit( uinput.KEY_DOWN, self.brake )
-        self.device.emit( uinput.KEY_LEFTCTRL, self.high_beams )
-        self.device.emit( uinput.KEY_SPACE, 1 if self.cruise != cruise_old else 0 )
-        self.device.emit( uinput.KEY_ENTER, 1 if self.driver_door != driver_door_old else 0 )
+        self.device.emit( uinput.KEY_U, self.brake )
+        self.device.emit( uinput.KEY_E, self.high_beams )
+        self.device.emit( uinput.KEY_P, 1 if t < self.cruise_t + self.LATCH_TIME else 0 )
+        self.device.emit( uinput.KEY_I, 1 if t < self.driver_door_t + self.LATCH_TIME else 0 )
         return
 
 
@@ -150,8 +165,6 @@ if __name__ == '__main__':
         args['baud_rate'] = sys.argv[3]
     if len( sys.argv ) >= 5:
         args['protocol'] = sys.argv[4]
-
-    controller = Mazda3Joystick()
 
     elm = ELM327( **args )
     elm.reset()
