@@ -66,7 +66,9 @@ class ELM327:
             msg_id = int( msg_m.group( 1 ), 16 )
             msg_b = bytes.fromhex( msg_m.group( 2 ).decode( 'ascii' ) )
             return (msg_id, msg_b)
-        return (-1, b'')
+        if msg_raw.startswith( b'SEARCHING' ):
+            raise EOFError
+        return (-1, msg_raw)
 
 
     def get_prompt( self ):
@@ -100,7 +102,7 @@ class ELM327:
 
         # initialize the CANbus interface
         self.send( b'0100' )
-        self.recv()
+        print( self.recv() )
 
         # get protocol 
         self.send( b'AT DPN' )

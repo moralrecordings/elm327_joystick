@@ -44,9 +44,13 @@ class Controls( mrc.Block ):
 
 class Mazda3:
     LATCH_TIME = 0.1
+    PRESS_THRESHOLD = 32
+    STEER_THRESHOLD = 64
+    SHOVE_THRESHOLD = 128
 
     def __init__( self, name, mapping ):
         # create a new virtual joystick device with the features we need 
+        print( 'Creating uinput device "{}"...'.format( name ) )
         self.device = uinput.Device( mapping, name )
         self.steering = 0
         self.accelerator = 0
@@ -117,9 +121,9 @@ class Mazda3Joystick( Mazda3 ):
         return
         
 
-class Mazda3Keyboard( Mazda3 ):
+class Mazda3Grim( Mazda3 ):
     
-    NAME = 'Mazda 3 Keyboard'
+    NAME = 'Mazda 3 Grim Fandango'
     DEVICE = [
         uinput.KEY_LEFT,
         uinput.KEY_UP,
@@ -130,9 +134,6 @@ class Mazda3Keyboard( Mazda3 ):
         uinput.KEY_P,
         uinput.KEY_I
     ]
-    PRESS_THRESHOLD = 32
-    STEER_THRESHOLD = 64
-    SHOVE_THRESHOLD = 128
     
 
     def __init__( self ):
@@ -151,14 +152,18 @@ class Mazda3Keyboard( Mazda3 ):
         return
 
 
+CONTROLLERS = {
+    'joystick': Mazda3Joystick,
+    'grim': Mazda3Grim
+}
+
 
 if __name__ == '__main__':
     args = {}
-    controller = None
-    if len( sys.argv ) >= 2 and sys.argv[1] == 'keyboard':
-        controller = Mazda3Keyboard()
-    else:
-        controller = Mazda3Joystick()
+    controller_type = 'joystick'
+    if len( sys.argv ) >= 2 and sys.argv[1] in CONTROLLERS:
+        controller_type = sys.argv[1] 
+    controller = CONTROLLERS[controller_type]()
     if len( sys.argv ) >= 3:
         args['device'] = sys.argv[2]
     if len( sys.argv ) >= 4:
@@ -174,10 +179,10 @@ if __name__ == '__main__':
     try:
         while True:
             msg_id, msg_b = elm.recv_can()
-            if msg_b:
+            if msg_id >= 0:
                 controller.update( msg_id, msg_b )
             else:
-                print('-- Miss: {}'.format(msg_raw))
+                print('-- Miss: {}'.format( msg_b ))
     except EOFError:
         print('-- Hit the end')
     except KeyboardInterrupt:
