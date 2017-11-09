@@ -151,22 +151,22 @@ class Mazda3Descent( Mazda3 ):
 
     def __init__( self ):
         super( Mazda3Descent, self ).__init__( name=self.NAME, mapping=self.DEVICE )
-        self.brake_prev = 0
-        self.brake_t = time.time()
-        self.brake_key = uinput.KEY_DOWN
+        self.high_beams_prev = 0
+        self.high_beams_t = time.time()
+        self.high_beams_key = uinput.KEY_DOWN
 
     def update( self, msg_id, msg_b ):
         t = time.time()
-        self.brake_prev = self.brake
+        self.high_beams_prev = self.high_beams
         super( Mazda3Descent, self ).update( msg_id, msg_b )
 
-        if self.brake != self.brake_prev:
-            if self.brake:
-                self.brake_key = uinput.KEY_UP if (t - self.brake_t < self.DOUBLE_TAP) else uinput.KEY_DOWN
-                self.device.emit( self.brake_key, 1 )
-                self.brake_t = t
+        if self.high_beams != self.high_beams_prev:
+            if self.high_beams:
+                self.high_beams_key = uinput.KEY_UP if (t - self.high_beams_t < self.DOUBLE_TAP) else uinput.KEY_DOWN
+                self.device.emit( self.high_beams_key, 1 )
+                self.high_beams_t = t
             else:
-                self.device.emit( self.brake_key, 0 )
+                self.device.emit( self.high_beams_key, 0 )
 
 
     def set_controls( self ): 
@@ -175,7 +175,7 @@ class Mazda3Descent( Mazda3 ):
         self.device.emit( uinput.ABS_WHEEL, self.steering )
         self.device.emit( uinput.ABS_GAS, self.accelerator )
 
-        self.device.emit( uinput.BTN_1, self.high_beams )
+        self.device.emit( uinput.BTN_0, self.brake )
         self.device.emit( uinput.BTN_2, 1 if t < (self.cruise_t + self.LATCH_TIME) else 0 )
         self.device.emit( uinput.BTN_3, 1 if t < (self.driver_door_t + self.LATCH_TIME) else 0 )
         return
