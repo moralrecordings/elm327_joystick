@@ -41,7 +41,7 @@ if __name__ == '__main__':
                 if msg_id not in last_msg:
                     last_msg[msg_id] = msg_b
                 elif firehose or (last_msg[msg_id] != msg_b):
-                    print( '{0:03x}: {1} -> {2}'.format(msg_id, last_msg[msg_id], msg_b.hex()) )
+                    print( '{0:03x}: {1} -> {2}'.format(msg_id, last_msg[msg_id].hex(), msg_b.hex()) )
                     last_msg[msg_id] = msg_b
     except EOFError:
         print('-- Hit the end')

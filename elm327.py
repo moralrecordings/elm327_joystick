@@ -4,7 +4,7 @@ import sys
 import time
 import re
 
-CAN_RE = re.compile( b'([0-9A-F]{3,8})\\W*([0-9A-F\\W]+)' )
+CAN_RE = re.compile( b'([0-9A-F]{3})\\W*([0-9A-F\\W]+)' )
 
 # Protocol mapping (taken from ELM327 datasheet)
 # '0': Autodetect (everything except User1 and User2)
@@ -55,6 +55,7 @@ class ELM327:
             elif b == b'>':
                 raise EOFError
             output.append( b[0] )
+        #print( output )
         return output
 
 
