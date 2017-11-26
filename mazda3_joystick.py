@@ -133,6 +133,30 @@ class Mazda3Doom( Mazda3Joystick ):
     ]
 
 
+class Mazda3DOS( Mazda3Joystick ):
+    
+    NAME = 'Mazda 3 DOS'
+    DEVICE = [
+        uinput.ABS_WHEEL + (-255, 255, 0, 0),
+        uinput.ABS_GAS + (-255, 255, 0, 0),
+        uinput.BTN_0,
+        uinput.BTN_1,
+        uinput.BTN_2,
+        uinput.BTN_3
+    ]
+
+    def set_controls( self ): 
+        t = time.time()
+        self.device.emit( uinput.ABS_WHEEL, self.steering )
+        self.device.emit( uinput.ABS_GAS, self.accelerator*2-255 )
+        self.device.emit( uinput.BTN_0, self.brake )
+        self.device.emit( uinput.BTN_1, self.high_beams )
+        self.device.emit( uinput.BTN_2, 1 if t < (self.cruise_t + self.LATCH_TIME) else 0 )
+        self.device.emit( uinput.BTN_3, 1 if t < (self.driver_door_t + self.LATCH_TIME) else 0 )
+        return
+
+
+
 class Mazda3Descent( Mazda3 ):
     
     NAME = 'Mazda 3 Descent'
@@ -197,7 +221,7 @@ class Mazda3Grim( Mazda3 ):
     
 
     def __init__( self ):
-        super( Mazda3Keyboard, self ).__init__( name=self.NAME, mapping=self.DEVICE )
+        super( Mazda3Grim, self ).__init__( name=self.NAME, mapping=self.DEVICE )
 
     def set_controls( self ): 
         t = time.time()
@@ -211,12 +235,41 @@ class Mazda3Grim( Mazda3 ):
         self.device.emit( uinput.KEY_I, 1 if t < self.driver_door_t + self.LATCH_TIME else 0 )
         return
 
+class Mazda3Sonic( Mazda3 ):
+    
+    NAME = 'Mazda 3 Sonic'
+    DEVICE = [
+        uinput.KEY_LEFT,
+        uinput.KEY_UP,
+        uinput.KEY_RIGHT,
+        uinput.KEY_DOWN,
+        uinput.KEY_Z,
+        uinput.KEY_ENTER
+    ]
+    
+
+    def __init__( self ):
+        super( Mazda3Sonic, self ).__init__( name=self.NAME, mapping=self.DEVICE )
+
+    def set_controls( self ): 
+        t = time.time()
+        self.device.emit( uinput.KEY_LEFT, 1 if self.steering < -self.STEER_THRESHOLD else 0 )
+        self.device.emit( uinput.KEY_RIGHT, 1 if self.steering > self.STEER_THRESHOLD else 0 )
+        self.device.emit( uinput.KEY_Z, 1 if self.accelerator > self.PRESS_THRESHOLD else 0 )
+        self.device.emit( uinput.KEY_DOWN, self.brake )
+        self.device.emit( uinput.KEY_UP, self.high_beams )
+        self.device.emit( uinput.KEY_ENTER, 1 if t < self.cruise_t + self.LATCH_TIME else 0 )
+        return
+
+
 
 CONTROLLERS = {
     'joystick': Mazda3Joystick,
     'grim': Mazda3Grim,
     'descent': Mazda3Descent,
     'doom': Mazda3Doom,
+    'dos': Mazda3DOS,
+    'sonic': Mazda3Sonic,
 }
 
 
