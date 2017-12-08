@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 
-import sys
+import uinput
+from elm327 import ELM327, PROTOCOLS
+from mrcrowbar import models as mrc
+
 import math
 import time
+from optparse import OptionParser
 
-import uinput
-from elm327 import ELM327
-from mrcrowbar import models as mrc
+class OptParser( OptionParser ):
+    def format_epilog( self, formatter ):
+        return '\n{}\n'.format( '\n'.join( [formatter._format_text( x ) for x in self.epilog.split( '\n' )] ) )
 
 
 class Steering( mrc.Block ):
@@ -49,7 +53,6 @@ class Mazda3:
     SHOVE_THRESHOLD = 128
 
     def __init__( self, name, mapping ):
-        # create a new virtual joystick device with the features we need 
         print( 'Creating uinput device "{}"...'.format( name ) )
         self.device = uinput.Device( mapping, name )
         self.steering = 0
@@ -108,7 +111,7 @@ class Mazda3Joystick( Mazda3 ):
     ]
 
     def __init__( self ):
-        super( Mazda3Joystick, self ).__init__( name=self.NAME, mapping=self.DEVICE )
+        super().__init__( name=self.NAME, mapping=self.DEVICE )
 
     def set_controls( self ): 
         t = time.time()
@@ -119,6 +122,7 @@ class Mazda3Joystick( Mazda3 ):
         self.device.emit( uinput.BTN_2, 1 if t < (self.cruise_t + self.LATCH_TIME) else 0 )
         self.device.emit( uinput.BTN_3, 1 if t < (self.driver_door_t + self.LATCH_TIME) else 0 )
         return
+
 
 class Mazda3Doom( Mazda3Joystick ):
     
@@ -156,7 +160,6 @@ class Mazda3DOS( Mazda3Joystick ):
         return
 
 
-
 class Mazda3Descent( Mazda3 ):
     
     NAME = 'Mazda 3 Descent'
@@ -174,7 +177,7 @@ class Mazda3Descent( Mazda3 ):
     DOUBLE_TAP = 0.5
 
     def __init__( self ):
-        super( Mazda3Descent, self ).__init__( name=self.NAME, mapping=self.DEVICE )
+        super().__init__( name=self.NAME, mapping=self.DEVICE )
         self.high_beams_prev = 0
         self.high_beams_t = time.time()
         self.high_beams_key = uinput.KEY_DOWN
@@ -182,7 +185,7 @@ class Mazda3Descent( Mazda3 ):
     def update( self, msg_id, msg_b ):
         t = time.time()
         self.high_beams_prev = self.high_beams
-        super( Mazda3Descent, self ).update( msg_id, msg_b )
+        super().update( msg_id, msg_b )
 
         if self.high_beams != self.high_beams_prev:
             if self.high_beams:
@@ -221,7 +224,7 @@ class Mazda3Grim( Mazda3 ):
     
 
     def __init__( self ):
-        super( Mazda3Grim, self ).__init__( name=self.NAME, mapping=self.DEVICE )
+        super().__init__( name=self.NAME, mapping=self.DEVICE )
 
     def set_controls( self ): 
         t = time.time()
@@ -234,6 +237,7 @@ class Mazda3Grim( Mazda3 ):
         self.device.emit( uinput.KEY_P, 1 if t < self.cruise_t + self.LATCH_TIME else 0 )
         self.device.emit( uinput.KEY_I, 1 if t < self.driver_door_t + self.LATCH_TIME else 0 )
         return
+
 
 class Mazda3Sonic( Mazda3 ):
     
@@ -249,7 +253,7 @@ class Mazda3Sonic( Mazda3 ):
     
 
     def __init__( self ):
-        super( Mazda3Sonic, self ).__init__( name=self.NAME, mapping=self.DEVICE )
+        super().__init__( name=self.NAME, mapping=self.DEVICE )
 
     def set_controls( self ): 
         t = time.time()
@@ -274,17 +278,35 @@ CONTROLLERS = {
 
 
 if __name__ == '__main__':
+    usage = 'Usage: %prog [options]'
+    parser = OptParser( epilog='Protocols supported by the ELM327:\n{}'.format( PROTOCOLS ) )
+    parser.add_option( '-g', '--game', dest='game', help='Game configuration to use (choices: {})'.format( ' '.join( CONTROLLERS.keys() ) ) )
+    parser.add_option( '-d', '--device', dest='device', help='Path to ELM327 serial device' )
+    parser.add_option( '-b', '--baudrate', dest='baud_rate', help='Baud rate' )
+    parser.add_option( '-p', '--protocol', dest='protocol', help='ELM327 message protocol to use' )
+
+    (options, argv) = parser.parse_args()
+
     args = {}
     controller_type = 'joystick'
-    if len( sys.argv ) >= 2 and sys.argv[1] in CONTROLLERS:
-        controller_type = sys.argv[1] 
+    if options.game and options.game in CONTROLLERS:
+        controller_type = options.game
+    elif len( argv ) >= 1 and argv[0] in CONTROLLERS:
+        controller_type = argv[0]
     controller = CONTROLLERS[controller_type]()
-    if len( sys.argv ) >= 3:
-        args['device'] = sys.argv[2]
-    if len( sys.argv ) >= 4:
-        args['baud_rate'] = sys.argv[3]
-    if len( sys.argv ) >= 5:
-        args['protocol'] = sys.argv[4]
+
+    if options.device:
+        args['device'] = options.device
+    elif len( argv ) >= 2:
+        args['device'] = argv[1]
+    if options.baud_rate:
+        args['baud_rate'] = options.baud_rate
+    elif len( argv ) >= 3:
+        args['baud_rate'] = argv[2]
+    if options.protocol:
+        args['protocol'] = options.protocol
+    elif len( argv ) >= 4:
+        args['protocol'] = argv[3]
 
     elm = ELM327( **args )
     elm.reset()
