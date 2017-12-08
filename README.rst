@@ -1,9 +1,9 @@
 ELM327 Joystick
 ###############
 
-This repository contains scripts to assist in connecting up the controls of a car (e.g. steering, accelerator and brakes) to a Linux virtual keyboard/game controller, by intercepting CANbus messages with a cheap ELM327 OBD-II adapter. The project was documented in the writeup `"Using your car as a giant joystick for $20" <https://moral.net.au>`_.
+This repository contains scripts useful for wiring the controls of a car (e.g. steering, accelerator and brakes) to a virtual keyboard/game controller. The project was documented in the writeup `"Using your car as a giant joystick for $20" <https://moral.net.au>`_.
 
-Included is the generic communications harness for the ELM327, and some example joysticks for the 2007 Mazda 3.
+In these scripts, input from the car is achieved by using a cheap ELM327 OBD-II adapter to monitor the CANbus, and output is handled via the Linux uinput driver. Included is a generic communications harness for the ELM327, a simple scanning program that monitors for changes on the CANbus, and some example joysticks for the 2007 Mazda 3.
 
 Usage
 =====
