@@ -18,9 +18,9 @@ To run this, you can `create a virtualenv for Python 3 <http://python-guide-pt-b
     pip install -r requirements.txt
     ./elm_scan.py --help
 
-elm_scan.py is a tool useful for determining which controls in the car produce useful CANbus output. As mentioned in the writeup, every car model has a different proprietary CANbus message format. ECUs in the car pack multiple sensors into a message with a unique type ID, then repeatedly send these messages on the CANbus. By default elm_scan.py will print out only the messages that have changed, which cuts out most of the irrelevant traffic.
+elm_scan.py is a tool useful for determining which controls in the car produce CANbus output. As mentioned in the writeup, every car model has a different proprietary CANbus message format. In general CANbus messages have an ID that denotes the message type, and a 2-10 byte body with multiple sensor readings packed in. ECUs in the car will constantly send out messages multiple times a second, even if there are no changes to the sensors; to counteract this elm_scan.py will only print out messages with changed content.
 
-The game control configurations I made for the demo are stored in mazda3_joystick.py, but they will not work with anything other than a 2007 Mazda 3. You can run elm_scan.py to map out the controls of your car, then use the layout of mazda3_joystick.py as an example for building your own car-to-joystick layer. I recommend having a common base class that interprets CANbus messages and keeps track of the car input state, and a child class for each (game-specific) mapping of state to keyboard/joystick events.
+You can run elm_scan.py to map out the controls of your car, then use the layout of mazda3_joystick.py as an example for building your own car-to-joystick layer. I recommend having a common base class that interprets CANbus messages and keeps track of the car input state, and a child class for each (game-specific) mapping of state to keyboard/joystick events.
 
 Licensing
 =========
